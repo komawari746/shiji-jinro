@@ -613,7 +613,7 @@ function viewLog(){
   <textarea id="ltext" placeholder="${esc(meta.placeholder)}"></textarea>
 
   <label style="margin-top:12px">写真を添える（任意）</label>
-  <input type="file" id="lphoto" accept="image/*" capture="environment">
+  <input type="file" id="lphoto" accept="image/*">
   <div id="lphotoPreview" style="margin-top:8px">${A.pendingPhoto?`<div class="row"><img src="${A.pendingPhoto}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:8px"><span class="sub grow">この写真を記録します</span><button class="btn ghost sm" data-act="photoclear" style="width:auto;padding:8px 12px">取り消す</button></div>`:""}</div>
   <button class="btn primary sm" data-act="log">保存する</button>
   <p class="sub">保存後、少し時間をおいてから他のプレイヤーにも表示されます。</p>
