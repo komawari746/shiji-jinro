@@ -84,8 +84,9 @@ function newGame(name, names) {
     code, name: name || "旅行", createdAt: t, phase: "playing",
     players: names.map((n, i) => ({
       id: "p" + (i + 1), name: String(n).trim() || ("プレイヤー" + (i + 1)), role: roles[i],
-      claimed: false, seenRole: false, nextAmbient: t + AMBIENT_INTERVAL()
+      claimed: false, seenRole: false
     })),
+    nextAmbient: t + AMBIENT_INTERVAL(),   // 旅行全体で1本のタイマー(誰か1人にだけ届く)
     orders: [], ambient: [], logs: [], votes: {}, revealedAt: null, secretMissions: []
   };
   g.secretMissions = assignSecretMissions(g);
@@ -95,14 +96,13 @@ function newGame(name, names) {
 function topUp(g) {
   const t = Date.now();
   if (g.phase === "result") return;
-  g.players.forEach(p => {
-    let guard = 0;
-    while (p.nextAmbient <= t && guard++ < 5) {
-      const pr = LOG_PROMPTS[rnd(0, LOG_PROMPTS.length - 1)];
-      g.ambient.push({ id: uid(), toId: p.id, text: pr.text, kind: pr.kind, deliverAt: p.nextAmbient, read: false, pushed: false });
-      p.nextAmbient = p.nextAmbient + AMBIENT_INTERVAL();
-    }
-  });
+  let guard = 0;
+  while (g.nextAmbient <= t && guard++ < 5 && g.players.length) {
+    const pr = LOG_PROMPTS[rnd(0, LOG_PROMPTS.length - 1)];
+    const target = g.players[rnd(0, g.players.length - 1)];
+    g.ambient.push({ id: uid(), toId: target.id, text: pr.text, kind: pr.kind, deliverAt: g.nextAmbient, read: false, pushed: false });
+    g.nextAmbient = g.nextAmbient + AMBIENT_INTERVAL();
+  }
 }
 
 function view(g, myId) {
