@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>指示人狼</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#121A21">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="指示人狼">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Antique&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#1B2730; --deck:#24333E; --deck2:#2C3E4A; --edge:#3A4F5D;
+  --amber:#E8A33D; --moon:#DCE4EA; --dust:#93A7B4; --signal:#C4553F; --paper:#EDE6D4;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);background:#121A21}
+body{
+  margin:0;height:100%;background:#121A21;color:var(--moon);
+  font-family:"Zen Kaku Gothic New",-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;
+  font-size:16px;line-height:1.7;-webkit-text-size-adjust:100%;overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(120% 70% at 50% -10%, #2A3D4A 0%, #121A21 62%);
+}
+#app{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:0 18px 140px;min-height:100%}
+h1,h2,.display{font-family:"Zen Antique",serif;font-weight:400;letter-spacing:.02em}
+h1{font-size:30px;margin:26px 0 4px;line-height:1.35}
+h2{font-size:20px;margin:28px 0 10px}
+p{margin:.6em 0}
+.sub{color:var(--dust);font-size:13.5px;line-height:1.6}
+a{color:var(--amber)}
+
+.topbar{display:flex;align-items:center;gap:10px;padding:14px 0 6px;min-height:52px}
+.topbar .back{background:none;border:0;color:var(--dust);font-size:15px;padding:6px 8px 6px 0;cursor:pointer}
+.topbar .title{font-family:"Zen Antique",serif;font-size:17px}
+.topbar .spacer{flex:1}
+.code{font-size:12px;color:var(--dust);letter-spacing:.14em}
+
+.card{background:var(--deck);border:1px solid var(--edge);border-radius:14px;padding:16px;margin:12px 0}
+.card.flat{background:transparent}
+.row{display:flex;align-items:center;gap:12px}
+.grow{flex:1;min-width:0}
+
+button{font-family:inherit}
+.btn{display:block;width:100%;padding:16px;border-radius:12px;border:1px solid var(--edge);
+  background:var(--deck2);color:var(--moon);font-size:16.5px;font-weight:500;cursor:pointer;margin:10px 0}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--amber);color:#1B2730;border-color:var(--amber);font-weight:700}
+.btn.ghost{background:transparent}
+.btn.danger{background:transparent;border-color:var(--signal);color:#E28B78}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn.sm{padding:11px;font-size:14.5px;margin:6px 0}
+.btn:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+input,textarea{width:100%;padding:13px 14px;border-radius:10px;border:1px solid var(--edge);
+  background:#1A252E;color:var(--moon);font-size:16px;font-family:inherit}
+textarea{min-height:110px;resize:vertical;line-height:1.6}
+label{display:block;font-size:13px;color:var(--dust);margin:14px 0 6px}
+
+.mission{background:#2A1B1E;border:1px solid #6B3A3A;border-radius:14px;padding:16px;margin:14px 0;
+  box-shadow:0 8px 22px rgba(196,85,63,.18)}
+.mission .tag{font-family:"Zen Antique",serif;font-size:12.5px;letter-spacing:.16em;color:#E28B78;
+  border-bottom:1px dashed #6B3A3A;padding-bottom:8px;margin-bottom:10px;display:flex;justify-content:space-between}
+.mission .txt{font-size:17px;line-height:1.7;color:#F3E3DE}
+.mission .done{color:#E28B78;font-family:"Zen Antique",serif;font-size:14px;margin-top:8px}
+.mission .reward{background:#1E2A33;border:1px solid var(--edge);border-radius:10px;padding:12px 14px;margin-top:12px}
+
+/* ミッション紙片 — このアプリで唯一の明るい面 */
+.slip{background:var(--paper);color:#2A2419;border-radius:6px;padding:16px 16px 14px;margin:12px 0;
+  box-shadow:0 10px 24px rgba(0,0,0,.35);position:relative}
+.slip .stamp{font-family:"Zen Antique",serif;font-size:12.5px;color:#8A6A2E;border-bottom:1px solid #C9BC9C;
+  padding-bottom:7px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline}
+.slip .body{font-size:17px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.slip.unread::after{content:"";position:absolute;top:-5px;right:-5px;width:12px;height:12px;border-radius:50%;
+  background:var(--amber);box-shadow:0 0 0 3px #121A21}
+.slip.dim{opacity:.55}
+
+.pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11.5px;border:1px solid var(--edge);color:var(--dust)}
+.pill.wolf{border-color:#7C8FA0;color:#C8D2DA}
+.pill.amber{border-color:var(--amber);color:var(--amber)}
+
+.pick{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px;border-radius:12px;
+  border:1px solid var(--edge);background:var(--deck);color:var(--moon);font-size:16px;margin:8px 0;cursor:pointer}
+.pick[aria-pressed="true"]{border-color:var(--amber);background:#33414B;box-shadow:inset 3px 0 0 var(--amber)}
+.pick .mark{width:22px;height:22px;border-radius:50%;border:1px solid var(--edge);flex:none}
+.pick[aria-pressed="true"] .mark{background:var(--amber);border-color:var(--amber)}
+.pick:disabled{opacity:.4}
+
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:5;background:linear-gradient(180deg,rgba(18,26,33,0) 0%,#121A21 34%);
+  padding:22px 18px calc(16px + env(safe-area-inset-bottom,0px));}
+.dock .inner{max-width:560px;margin:0 auto}
+.tabs{display:flex;gap:6px;margin-top:8px}
+.tabs button{flex:1;padding:11px 4px;border-radius:10px;border:1px solid var(--edge);background:#1E2A33;
+  color:var(--dust);font-size:12.5px;cursor:pointer;position:relative}
+.tabs button[aria-current="true"]{color:var(--moon);border-color:#5A7183;background:var(--deck2)}
+.dot{position:absolute;top:6px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--amber)}
+
+.logitem{border-left:2px solid var(--edge);padding:2px 0 14px 14px;margin-left:4px}
+.logitem .meta{font-size:12px;color:var(--dust)}
+.logitem .txt{white-space:pre-wrap;word-break:break-word}
+
+.tl{display:flex;gap:12px;padding:10px 0;border-top:1px solid #31434F}
+.tl .t{font-variant-numeric:tabular-nums;color:var(--amber);font-size:13.5px;flex:none;width:52px;padding-top:2px}
+.tl .c{flex:1;min-width:0}
+.tl .to{font-size:13px;color:var(--dust)}
+.tl .m{white-space:pre-wrap;word-break:break-word}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(112px + env(safe-area-inset-bottom,0px));
+  background:var(--paper);color:#2A2419;padding:11px 18px;border-radius:999px;font-size:14px;z-index:20;
+  box-shadow:0 8px 20px rgba(0,0,0,.4);max-width:88%}
+.hide{display:none!important}
+.center{text-align:center}
+.mono{font-variant-numeric:tabular-nums}
+hr{border:0;border-top:1px solid #31434F;margin:20px 0}
+.switcher{position:sticky;top:0;z-index:6;margin:0 -18px;padding:8px 18px;background:#0E151B;
+  border-bottom:1px solid var(--edge);display:flex;gap:8px;align-items:center;font-size:13px;color:var(--dust)}
+.switcher select{flex:1;background:#1A252E;color:var(--moon);border:1px solid var(--edge);border-radius:8px;padding:7px 8px;font-size:14px;font-family:inherit}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+"use strict";
+/* ============================================================
+   指示人狼 — プロトタイプ
+   1ファイルで動作。以下の2モードを自動判別します。
+     server : /api/ping が応答する（Node サーバーで配信）→ 7台の実機で同時プレイ
+     local  : それ以外（単体で開いた場合）→ 1台で全員を切り替えるテストモード
+   ============================================================ */
+
+const MAX_DELAY_MS = 5 * 60 * 1000;      // 指示の最大遅延 5分
+const MAX_LOG_DELAY_MS = 3 * 60 * 1000;  // 旅行ログの反映遅延 最大3分
+const POLL_MS = 4000;
+const PLAYER_COUNT = 7, WOLF_COUNT = 2;
+
+/* 市民側にも自然に届く「旅行ログ指示」。ここに追加・編集するだけで内容を増やせます。
+   人狼からの指示と、見た目・届き方はまったく同じにしてあります。 */
+const LOG_PROMPTS = [
+  { id:"photo_here",   kind:"photo",       text:"今いる場所の写真を1枚撮影して、旅行ログに記録せよ" },
+  { id:"photo_duo",    kind:"photo",       text:"一番近くにいる人とツーショットを撮影して、旅行ログに記録せよ" },
+  { id:"photo_group",  kind:"photo",       text:"全員が写っている写真を1枚撮影して、旅行ログに記録せよ" },
+  { id:"tanka",        kind:"tanka",       text:"今の感情を短歌にして、旅行ログに記録せよ" },
+  { id:"photo_request",kind:"photo",       text:"誰か1人に写真を撮ってもらい、旅行ログに記録せよ" },
+  { id:"mood",         kind:"mood",        text:"今の気分を5段階で評価して、旅行ログに記録せよ" },
+  { id:"poem",         kind:"poem",        text:"ポエムを書いて、旅行ログに記録せよ" },
+  { id:"wolf_theory",  kind:"wolf_theory", text:"今の人狼の推理を書いて、旅行ログに記録せよ" },
+  { id:"praise",       kind:"praise",      text:"誰か1人をベタ褒めせよ" }
+];
+const AMBIENT_INTERVAL = ()=> rnd(20,40)*60*1000;   // 20〜40分おき
+
+/* 秘密ミッション。旅行全体で3つだけ、別々のプレイヤーにランダムで届く。 */
+const SECRET_MISSIONS = [
+  "誰かに「お前今日どうした？」と言わせろ",
+  "知らない人と2ショットを撮れ",
+  "自分で人狼だと疑われるような言動を取り、2人以上に「怪しい」と言わせろ"
+];
+function assignSecretMissions(g){
+  const shuffledPlayers = g.players.map(p=>p.id);
+  for(let i=shuffledPlayers.length-1;i>0;i--){const j=rnd(0,i);[shuffledPlayers[i],shuffledPlayers[j]]=[shuffledPlayers[j],shuffledPlayers[i]];}
+  const pool = SECRET_MISSIONS.slice();
+  for(let i=pool.length-1;i>0;i--){const j=rnd(0,i);[pool[i],pool[j]]=[pool[j],pool[i]];}
+  const chosen = shuffledPlayers.slice(0, Math.min(3, pool.length, g.players.length));
+  let t = g.createdAt;
+  return chosen.map((toId,i)=>{
+    t = t + (i===0 ? rnd(30,90)*60*1000 : rnd(180,240)*60*1000);   // 1個目は30〜90分後、以降は3〜4時間おき
+    return {id:uid(), toId, text:pool[i], deliverAt:t, pushed:false, completed:false, rewardPlayerId:null, rewardRole:null};
+  });
+}
+const rnd = (a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const uid = ()=>Math.random().toString(36).slice(2,10);
+const nowMs = ()=>Date.now();
+const hhmm = t=>{const d=new Date(t);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");};
+const esc = s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const roleLabel = role => role==="wolf" ? "人狼" : role==="citizen_hype" ? "市民（盛り上げ役）" : "市民";
+
+/* ===================== ゲームロジック（サーバーと共有の考え方） ===================== */
+const Core = {
+  newGame(name, playerNames){
+    const roles = Array(PLAYER_COUNT).fill("citizen");
+    const idx = [...Array(PLAYER_COUNT).keys()];
+    for(let i=idx.length-1;i>0;i--){const j=rnd(0,i);[idx[i],idx[j]]=[idx[j],idx[i]];}
+    idx.slice(0,WOLF_COUNT).forEach(i=>roles[i]="wolf");
+    const hypeIdx = idx.slice(WOLF_COUNT)[rnd(0, PLAYER_COUNT-WOLF_COUNT-1)];
+    roles[hypeIdx] = "citizen_hype";
+    const t = nowMs();
+    const g = {
+      code: String(rnd(100000,999999)),
+      name: name || "旅行",
+      createdAt: t,
+      phase: "playing",                       // playing | voting | result
+      players: playerNames.map((n,i)=>({
+        id:"p"+(i+1), name:n.trim()||("プレイヤー"+(i+1)), role:roles[i],
+        claimed:false, seenRole:false
+      })),
+      nextAmbient: t + AMBIENT_INTERVAL(),    // 旅行全体で1本のタイマー(誰か1人にだけ届く)
+      orders: [],     // {id,fromId,toId,text,sentAt,deliverAt,read}
+      ambient: [],    // {id,toId,text,deliverAt,read}
+      logs: [],       // {id,playerId,text,at}
+      votes: {},      // playerId -> [id,id]
+      revealedAt: null,
+      secretMissions: []
+    };
+    g.secretMissions = assignSecretMissions(g);
+    return g;
+  },
+  /* 全体で1本のタイマーで、ランダムな1人にだけ自然な通知を届ける。人狼にも届く。 */
+  topUp(g){
+    const t = nowMs();
+    if(g.phase==="result") return;
+    let guard=0;
+    while(g.nextAmbient <= t && guard++ < 5 && g.players.length){
+      const pr = LOG_PROMPTS[rnd(0,LOG_PROMPTS.length-1)];
+      const target = g.players[rnd(0,g.players.length-1)];
+      g.ambient.push({id:uid(), toId:target.id, text:pr.text, kind:pr.kind, deliverAt:g.nextAmbient, read:false});
+      g.nextAmbient = g.nextAmbient + AMBIENT_INTERVAL();
+    }
+  },
+  sendOrder(g, fromId, toId, text){
+    const t = nowMs();
+    const delay = Math.floor(Math.random()*(MAX_DELAY_MS+1));  // 0秒〜5分
+    g.orders.push({id:uid(), fromId, toId, text:text.trim(), sentAt:t, deliverAt:t+delay, read:false});
+  },
+  /* 自分の端末に返してよい情報だけを抜き出す（差出人・他人の役職は絶対に含めない） */
+  view(g, myId){
+    this.topUp(g);
+    const t = nowMs();
+    const me = g.players.find(p=>p.id===myId) || null;
+    const reveal = g.phase==="result";
+    const inbox = [];
+    if(me){
+      g.orders.filter(o=>o.toId===myId && o.deliverAt<=t)
+        .forEach(o=>inbox.push({id:o.id, kind:"order", text:o.text, at:o.deliverAt, read:o.read}));
+      g.ambient.filter(a=>a.toId===myId && a.deliverAt<=t)
+        .forEach(a=>inbox.push({id:a.id, kind:"ambient", promptKind:a.kind, text:a.text, at:a.deliverAt, read:a.read}));
+      inbox.sort((a,b)=>b.at-a.at);
+    }
+    let secretMission = null;
+    if(me){
+      const sm = (g.secretMissions||[]).find(m=>m.toId===myId && m.deliverAt<=t);
+      if(sm){
+        let reward=null;
+        if(sm.completed && sm.rewardPlayerId){
+          const rp=g.players.find(p=>p.id===sm.rewardPlayerId);
+          if(rp) reward={name:rp.name, role:rp.role};
+        }
+        secretMission = {id:sm.id, text:sm.text, completed:sm.completed, reward};
+      }
+    }
+    return {
+      code:g.code, name:g.name, phase:g.phase, createdAt:g.createdAt,
+      players:g.players.map(p=>({id:p.id, name:p.name, claimed:p.claimed,
+        role: (reveal||p.id===myId) ? p.role : null, voted: !!g.votes[p.id]})),
+      me: me ? {id:me.id, name:me.name, role:me.role, seenRole:me.seenRole} : null,
+      inbox,
+      secretMission,
+      sentCount: me && me.role==="wolf" ? g.orders.filter(o=>o.fromId===myId).length : 0,
+      logs: g.logs.filter(l=>l.playerId===myId || l.deliverAt<=t).slice(-80)
+        .map(l=>({id:l.id, kind:l.kind, text:l.text, photo:l.photo, hasPhoto:!!l.photo, mood:l.mood, at:l.at,
+          mine: l.playerId===myId, playerId: l.playerId===myId ? l.playerId : null})),
+      myVote: g.votes[myId] || null,
+      votedCount: Object.keys(g.votes).length,
+      reveal: reveal ? {
+        orders: g.orders.slice().sort((a,b)=>a.deliverAt-b.deliverAt),
+        ambientCount: g.ambient.filter(a=>a.deliverAt<=t).length,
+        votes: g.votes
+      } : null
+    };
+  }
+};
+
+/* ===================== バックエンド ===================== */
+const LS = {
+  get(k,d){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;} },
+  set(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
+};
+
+const LocalBackend = {
+  mode:"local",
+  _g(code){ return LS.get("sjw:g:"+code,null); },
+  _s(g){ LS.set("sjw:g:"+g.code,g); LS.set("sjw:last",g.code); },
+  async create(name,names){ const g=Core.newGame(name,names); this._s(g); return {code:g.code}; },
+  async exists(code){ return !!this._g(code); },
+  async claim(code,pid){ const g=this._g(code); if(!g) return null; const p=g.players.find(x=>x.id===pid);
+    if(!p) return null; p.claimed=true; this._s(g); return {token:pid}; },
+  async state(code,pid){ const g=this._g(code); if(!g) return null; const v=Core.view(g,pid); this._s(g); return v; },
+  async act(code,pid,action,payload){ const g=this._g(code); if(!g) return null; applyAction(g,pid,action,payload); this._s(g); return Core.view(g,pid); },
+  async vapidKey(){ return null; },
+  async subscribe(){ return {ok:false,reason:"local_mode"}; }
+};
+
+const ServerBackend = {
+  mode:"server",
+  async _post(path,body){ const r=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); if(!r.ok) throw new Error(await r.text()); return r.json(); },
+  async create(name,names){ return this._post("/api/create",{name,names}); },
+  async exists(code){ const r=await fetch("/api/exists?code="+encodeURIComponent(code)); const j=await r.json(); return j.exists; },
+  async claim(code,pid){ return this._post("/api/claim",{code,pid}); },
+  async state(code,pid){ const r=await fetch("/api/state?code="+encodeURIComponent(code)+"&pid="+encodeURIComponent(pid)); if(!r.ok) return null; return r.json(); },
+  async act(code,pid,action,payload){ return this._post("/api/act",{code,pid,action,payload}); },
+  async vapidKey(){ try{ const r=await fetch("/api/vapidPublicKey"); const j=await r.json(); return j.key; }catch(e){ return null; } },
+  async subscribe(code,pid,subscription){ return this._post("/api/subscribe",{code,pid,subscription}); }
+};
+
+/* ローカル・サーバー共通のアクション適用 */
+function applyAction(g,pid,action,payload){
+  const me = g.players.find(p=>p.id===pid);
+  if(action==="seenRole" && me){ me.seenRole=true; }
+  else if(action==="order"){
+    if(!me || me.role!=="wolf") return;
+    if(!payload.toId || !String(payload.text||"").trim()) return;
+    Core.sendOrder(g, pid, payload.toId, String(payload.text).slice(0,400));
+  }
+  else if(action==="read"){
+    (g.orders.find(o=>o.id===payload.id&&o.toId===pid)||{}).read=true;
+    (g.ambient.find(a=>a.id===payload.id&&a.toId===pid)||{}).read=true;
+  }
+  else if(action==="log"){
+    const txt=String(payload.text||"").trim().slice(0,600);
+    const photo=(typeof payload.photo==="string" && payload.photo.startsWith("data:image/")) ? payload.photo : null;
+    const allowedKinds=["free","photo","tanka","poem","mood","wolf_theory","praise"];
+    const kind = allowedKinds.includes(payload.kind) ? payload.kind : "free";
+    let mood=null;
+    if(kind==="mood"){ const m=parseInt(payload.mood,10); if(m>=1&&m<=5) mood=m; }
+    if(!txt && !photo && !mood) return;
+    const t=nowMs();
+    const delay=Math.floor(Math.random()*(MAX_LOG_DELAY_MS+1));  // 0分〜3分
+    g.logs.push({id:uid(), playerId:pid, kind, text:txt, photo, mood, at:t, deliverAt:t+delay});
+  }
+  else if(action==="openVote"){ if(g.phase==="playing") g.phase="voting"; }
+  else if(action==="vote"){
+    if(g.phase!=="voting") return;
+    const v=(payload.picks||[]).slice(0,2);
+    if(v.length===2) g.votes[pid]=v;
+  }
+  else if(action==="missionComplete"){
+    const sm=(g.secretMissions||[]).find(m=>m.toId===pid && m.deliverAt<=nowMs());
+    if(!sm || sm.completed) return;
+    sm.completed=true;
+    const others=g.players.filter(p=>p.id!==pid);
+    if(others.length){
+      const target=others[rnd(0,others.length-1)];
+      sm.rewardPlayerId=target.id; sm.rewardRole=target.role;
+    }
+  }
+  else if(action==="reveal"){ g.phase="result"; g.revealedAt=nowMs(); }
+  else if(action==="backToPlay"){ if(g.phase==="voting"){ g.phase="playing"; } }
+}
+
+/* ===================== アプリ状態 ===================== */
+let B = LocalBackend;
+const A = { view:"home", code:null, pid:null, st:null, tab:"home", sel:[], toast:null, openSlip:null, localPlayers:[], pendingPhoto:null, logKind:"free", logMood:null };
+
+const KIND_META = {
+  free:        { label:null,    placeholder:"今日の出来事、食べたもの、誰かの名言など" },
+  photo:       { label:"写真",   placeholder:"気になったことがあれば添えて（任意）" },
+  tanka:       { label:"短歌",   placeholder:"五・七・五・七・七で、今の気持ちを詠んでみてください" },
+  poem:        { label:"ポエム", placeholder:"自由に一篇、書いてみてください" },
+  mood:        { label:"気分",   placeholder:"ひとことあれば（任意）" },
+  wolf_theory: { label:"推理",   placeholder:"今、誰が怪しい？ 理由も自由に書いてみてください" },
+  praise:      { label:"べた褒め", placeholder:"誰を、どんなふうに褒めたか自由に書いてください" }
+};
+const KIND_CHIPS = [
+  {k:"free", label:"📝 その他"}, {k:"photo", label:"📷 写真"}, {k:"tanka", label:"🌸 短歌"},
+  {k:"poem", label:"✒️ ポエム"}, {k:"mood", label:"🙂 気分"}, {k:"wolf_theory", label:"🔍 推理"},
+  {k:"praise", label:"🎉 べた褒め"}
+];
+
+/* 選んだ写真を、送信に耐えるサイズまで縮小・圧縮してdataURLにする */
+function resizeImage(file, maxW){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const scale = Math.min(1, maxW/img.width);
+        const w = Math.max(1, Math.round(img.width*scale)), hgt = Math.max(1, Math.round(img.height*scale));
+        const canvas = document.createElement("canvas");
+        canvas.width=w; canvas.height=hgt;
+        canvas.getContext("2d").drawImage(img,0,0,w,hgt);
+        resolve(canvas.toDataURL("image/jpeg",0.72));
+      };
+      img.onerror = ()=>reject(new Error("image_decode_failed"));
+      img.src = e.target.result;
+    };
+    reader.onerror = ()=>reject(new Error("read_failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function toast(msg){ A.toast=msg; render(); setTimeout(()=>{ if(A.toast===msg){A.toast=null; render();} },2200); }
+async function refresh(){
+  if(!A.code||!A.pid) return;
+  try{ const st = await B.state(A.code,A.pid); if(st){ A.st=st; } }catch(e){}
+}
+async function act(action,payload){
+  try{ const st = await B.act(A.code,A.pid,action,payload||{}); if(st) A.st=st; }catch(e){ toast("通信に失敗しました"); }
+  render();
+}
+function urlBase64ToUint8Array(base64String){
+  const padding="=".repeat((4 - base64String.length % 4) % 4);
+  const base64=(base64String+padding).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(base64); const out=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) out[i]=raw.charCodeAt(i);
+  return out;
+}
+async function enablePush(){
+  if(B.mode!=="server") return toast("この体験版では通知は使えません");
+  if(!("serviceWorker" in navigator) || !("PushManager" in window)) return toast("この端末・ブラウザは通知に対応していません");
+  try{
+    const key = await B.vapidKey();
+    if(!key) return toast("サーバー側で通知の準備ができていません（npm install web-push）");
+    const perm = await Notification.requestPermission();
+    if(perm!=="granted") return toast("通知が許可されませんでした");
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    const ready = await navigator.serviceWorker.ready;
+    let sub = await ready.pushManager.getSubscription();
+    if(!sub) sub = await ready.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlBase64ToUint8Array(key) });
+    await B.subscribe(A.code, A.pid, sub);
+    toast("通知を有効にしました");
+    await refresh(); render();
+  }catch(e){ toast("通知の設定に失敗しました"); }
+}
+
+function saveSession(){ LS.set("sjw:session",{code:A.code,pid:A.pid,mode:B.mode}); }
+
+/* ===================== 画面 ===================== */
+function h(html){ document.getElementById("app").innerHTML = html + (A.toast?`<div class="toast">${esc(A.toast)}</div>`:""); bind(); }
+function unread(){ return A.st ? A.st.inbox.filter(i=>!i.read).length : 0; }
+
+function topbar(title,back){
+  return `<div class="topbar">
+    ${back?`<button class="back" data-nav="${back}">← 戻る</button>`:""}
+    <div class="title">${esc(title)}</div><div class="spacer"></div>
+    ${A.code?`<div class="code mono">${A.code}</div>`:""}</div>`;
+}
+function switcher(){
+  if(B.mode!=="local"||!A.st) return "";
+  return `<div class="switcher"><span>1台テスト</span>
+    <select id="swsel">${A.st.players.map(p=>`<option value="${p.id}" ${p.id===A.pid?"selected":""}>${esc(p.name)}</option>`).join("")}</select></div>`;
+}
+
+function viewHome(){
+  h(`<h1>指示人狼</h1>
+  <p class="sub">旅先で、誰かがあなたに指示を出している。<br>旅が終わるまでバレなければ、人狼の勝ち。</p>
+  <div style="height:26px"></div>
+  <button class="btn primary" data-nav="create">ゲームを作る</button>
+  <button class="btn" data-nav="join">ゲームに参加する</button>
+  ${LS.get("sjw:session",null)?`<button class="btn ghost" data-act="resume">前回の続きに戻る</button>`:""}
+  <hr>
+  <p class="sub">接続モード：${B.mode==="server"?"サーバー（複数端末で同時プレイ）":"ローカル（この端末だけ。全員を切り替えて動作確認できます）"}</p>`);
+}
+
+function viewCreate(){
+  const saved = LS.get("sjw:names",["","","","","","",""]);
+  h(`${topbar("ゲームを作る","home")}
+  <label for="gname">ゲーム名</label>
+  <input id="gname" placeholder="夏の車旅" value="${esc(LS.get("sjw:gname","")) }">
+  <label>参加者7人の名前</label>
+  ${saved.map((n,i)=>`<input class="pname" data-i="${i}" placeholder="${i+1}人目" value="${esc(n)}" style="margin-bottom:8px">`).join("")}
+  <p class="sub">役職はランダムに配られます（人狼2・市民5）。人狼は相方が誰か分かりません。</p>
+  <div class="dock"><div class="inner"><button class="btn primary" data-act="create">ゲームを開始する</button></div></div>`);
+}
+
+function viewJoin(){
+  h(`${topbar("ゲームに参加する","home")}
+  <label for="jcode">ゲームコード（6桁）</label>
+  <input id="jcode" inputmode="numeric" maxlength="6" placeholder="123456" class="mono" style="font-size:22px;letter-spacing:.2em">
+  <p class="sub">ホストの端末に表示されている6桁の番号を入れてください。</p>
+  <div class="dock"><div class="inner"><button class="btn primary" data-act="join">次へ</button></div></div>`);
+}
+
+function viewPick(){
+  const ps = A.st ? A.st.players : A.localPlayers;
+  h(`${topbar("あなたは誰？","home")}
+  <p class="sub">自分の名前を選んでください。選んだあとは、この端末はその人のものになります。</p>
+  ${ps.map(p=>`<button class="pick" data-claim="${p.id}"><span class="mark"></span><span class="grow">${esc(p.name)}</span>${p.claimed?'<span class="pill">参加済み</span>':""}</button>`).join("")}`);
+}
+
+function viewRole(){
+  const me = A.st.me;
+  const open = A.openSlip==="role";
+  h(`${switcher()}${topbar("役職の確認","")}
+  <p class="sub">まわりに画面を見られていないことを確かめてから開いてください。</p>
+  ${open ? `<div class="slip"><div class="stamp"><span>${esc(A.st.name)}</span><span>${esc(me.name)}</span></div>
+      <div class="body" style="font-family:'Zen Antique',serif;font-size:26px;line-height:1.5">
+      ${me.role==="wolf" ? "あなたは人狼です" : me.role==="citizen_hype" ? "あなたは「市民（盛り上げ役）」です" : "あなたは市民です"}</div>
+      <div style="font-size:13.5px;color:#6B6152;margin-top:10px">
+      ${me.role==="wolf"
+        ? "もう1人の人狼が誰かは分かりません。旅が終わるまで正体を隠し通せば勝ちです。"
+        : me.role==="citizen_hype"
+        ? "あなたに特別な勝利条件はありません。とにかくこの旅行を全力で盛り上げてください！ あなたなりの方法で、みんなにとって最高の旅行にしましょう。"
+        : "旅の終わりの投票で、人狼2人を当てるのが目的です。"}</div></div>
+      <button class="btn primary" data-act="roleok">確認した</button>
+      <button class="btn ghost sm" data-act="rolehide">画面を隠す</button>`
+    : `<button class="btn" style="padding:44px 16px" data-act="roleshow">タップして役職を見る</button>
+       ${me.seenRole?`<button class="btn ghost" data-act="go:home">ホームへ</button>`:""}`}`);
+}
+
+function missionCardHtml(sm){
+  if(!sm) return "";
+  if(!sm.completed){
+    return `<div class="mission">
+      <div class="tag"><span>🎯 SECRET MISSION</span><span>あなただけに</span></div>
+      <div class="txt">${esc(sm.text)}</div>
+      <button class="btn primary sm" style="margin-top:14px" data-act="missionclear">MISSION CLEAR</button>
+    </div>`;
+  }
+  const r = sm.reward;
+  return `<div class="mission">
+    <div class="tag"><span>🎯 SECRET MISSION</span><span>CLEAR 済み</span></div>
+    <div class="txt" style="opacity:.75;text-decoration:line-through">${esc(sm.text)}</div>
+    ${r ? `<div class="reward">
+        <div class="sub">あなたは ${esc(r.name)} さんの役職を知りました</div>
+        <div style="font-family:'Zen Antique',serif;font-size:22px;margin-top:6px">${esc(r.name)}：${roleLabel(r.role)}</div>
+        <div class="sub" style="margin-top:6px">話すかどうかも、嘘をつくかどうかも自由です。</div>
+      </div>` : ""}
+  </div>`;
+}
+
+function viewPlayerHome(){
+  const st=A.st, me=st.me, u=unread();
+  const others = st.players.filter(p=>p.id!==me.id);
+  h(`${switcher()}
+  <div class="topbar"><div class="title">${esc(st.name)}</div><div class="spacer"></div><div class="code mono">${st.code}</div></div>
+  <div class="card row">
+    <div class="grow"><div style="font-size:18px">${esc(me.name)}</div>
+      <div class="sub">${roleLabel(me.role)}・${st.players.length}人で旅行中</div></div>
+    <span class="pill ${me.role==="wolf"?"wolf":""}">${me.role==="wolf"?"🐺":"🧭"}</span>
+  </div>
+
+  ${missionCardHtml(st.secretMission)}
+
+  ${B.mode==="server" ? (me.pushEnabled
+      ? `<p class="sub center">🔔 通知は有効です</p>`
+      : `<button class="btn ghost sm" data-act="enablepush">🔔 通知を有効にする</button>
+         <p class="sub center">iPhoneの場合は、Safariの共有ボタン→「ホーム画面に追加」してから、そのアイコンで開いて有効にしてください。</p>`)
+    : ""}
+
+  ${u>0?`<div class="slip unread" data-nav="inbox" role="button" tabindex="0">
+      <div class="stamp"><span>あなたへの指示があります</span><span>${u}件</span></div>
+      <div class="body" style="font-size:15px">タップして開く</div></div>`
+     :`<div class="card flat center sub" style="padding:22px 6px">いまは届いている指示はありません</div>`}
+
+  ${me.role==="wolf"
+    ? `<button class="btn primary" data-nav="order">指示を送る</button>
+       <p class="sub center">これまでに送った指示：${st.sentCount}件</p>`
+    : `<button class="btn primary" data-nav="log">旅行ログを書く</button>
+       <p class="sub center">記録された出来事：${st.logs.length}件</p>`}
+
+  ${st.phase==="voting"?`<button class="btn danger" data-nav="vote">最終投票へ</button>`:""}
+  ${st.phase==="result"?`<button class="btn danger" data-nav="result">答え合わせを見る</button>`:""}
+  ${dock()}`);
+}
+
+function dock(){
+  const u=unread(), st=A.st;
+  return `<div class="dock"><div class="inner"><div class="tabs">
+    <button data-nav="home" aria-current="${A.view==="home2"}">ホーム</button>
+    <button data-nav="inbox" aria-current="${A.view==="inbox"}">指示${u>0?'<span class="dot"></span>':""}</button>
+    <button data-nav="log" aria-current="${A.view==="log"}">旅行ログ</button>
+    <button data-nav="${st.phase==="result"?"result":"vote"}" aria-current="${A.view==="vote"||A.view==="result"}">投票</button>
+  </div></div></div>`;
+}
+
+function viewInbox(){
+  const st=A.st;
+  h(`${switcher()}${topbar("あなたへの指示","home")}
+  ${st.inbox.length===0?`<div class="card flat center sub" style="padding:36px 6px">まだ何も届いていません。<br>旅を続けてください。</div>`:""}
+  ${st.inbox.map(i=>`<div class="slip ${i.read?"dim":"unread"}" data-read="${i.id}">
+      <div class="stamp"><span>あなたへの指示があります</span><span class="mono">${hhmm(i.at)}</span></div>
+      <div class="body">${esc(i.text)}</div></div>`).join("")}
+  <p class="sub center" style="margin-top:20px">誰が送ったかは分かりません。<br>従うかどうかも、人に話すかどうかも自由です。</p>
+  ${dock()}`);
+}
+
+function viewOrder(){
+  const st=A.st;
+  h(`${switcher()}${topbar("指示を送る","home")}
+  <label>誰に送る？</label>
+  ${st.players.filter(p=>p.id!==st.me.id).map(p=>`<button class="pick" data-pick1="${p.id}" aria-pressed="${A.sel[0]===p.id}"><span class="mark"></span><span class="grow">${esc(p.name)}</span></button>`).join("")}
+  <label for="otext">指示の内容</label>
+  <textarea id="otext" placeholder="例：コンビニで飲み物を買ってきて"></textarea>
+  <p class="sub">旅を壊す・危険・人に迷惑がかかる指示は禁止です。<br>送信後、0秒〜5分のランダムな時間をおいて相手に届きます。届く時刻は、あなたにも表示されません。</p>
+  <div class="dock"><div class="inner"><button class="btn primary" data-act="send" ${A.sel[0]?"":"disabled"}>この指示を送る</button></div></div>`);
+}
+
+function logItemHtml(l){
+  const meta = KIND_META[l.kind]||KIND_META.free;
+  const isVerse = l.kind==="tanka" || l.kind==="poem";
+  const authorLabel = l.mine ? `${esc((A.st.me&&A.st.me.name)||"あなた")}（自分）` : "匿名";
+  const photoSrc = l.photo ? l.photo
+    : (l.hasPhoto ? `/api/photo?code=${encodeURIComponent(A.code)}&pid=${encodeURIComponent(A.pid)}&id=${encodeURIComponent(l.id)}` : null);
+  return `<div class="logitem">
+      <div class="meta"><span class="mono">${hhmm(l.at)}</span> ・ ${authorLabel}${meta.label?` ・ <span class="pill">${esc(meta.label)}</span>`:""}</div>
+      ${l.kind==="mood" && l.mood ? `<div style="font-size:22px;letter-spacing:.14em;margin-top:4px">${"●".repeat(l.mood)}${"○".repeat(5-l.mood)}<span class="sub" style="font-size:13px;margin-left:8px">${l.mood}/5</span></div>` : ""}
+      ${l.text ? (isVerse
+          ? `<div class="txt" style="font-family:'Zen Antique',serif;font-size:17.5px;line-height:1.9;margin-top:6px">${esc(l.text)}</div>`
+          : `<div class="txt">${esc(l.text)}</div>`) : ""}
+      ${photoSrc?`<img src="${photoSrc}" alt="" loading="lazy" style="max-width:100%;border-radius:10px;margin-top:8px;display:block">`:""}
+      </div>`;
+}
+
+function viewLog(){
+  const st=A.st;
+  const kind = A.logKind||"free";
+  const meta = KIND_META[kind];
+  h(`${switcher()}${topbar("旅行ログ","home")}
+  <p class="sub">思い出として、あとから見返せる記録です。写真・短歌・ポエム・気分・推理など、なんでも残せます。</p>
+  <div class="row" style="flex-wrap:wrap;gap:7px;margin:10px 0 14px">
+    ${KIND_CHIPS.map(c=>`<button data-logkind="${c.k}" style="cursor:pointer;padding:8px 13px;border-radius:999px;font-size:13px;
+      border:1px solid ${c.k===kind?"var(--amber)":"var(--edge)"};background:${c.k===kind?"#33414B":"transparent"};color:${c.k===kind?"var(--amber)":"var(--dust)"}">${c.label}</button>`).join("")}
+  </div>
+
+  ${kind==="mood" ? `<label>今の気分（1〜5）</label>
+    <div class="row" style="gap:8px;margin:4px 0 10px">
+      ${[1,2,3,4,5].map(n=>`<button class="pick" data-mood="${n}" aria-pressed="${A.logMood===n}" style="flex:1;justify-content:center;padding:14px 0;margin:0"><span style="font-size:19px">${n}</span></button>`).join("")}
+    </div>` : ""}
+  <textarea id="ltext" placeholder="${esc(meta.placeholder)}"></textarea>
+
+  <label style="margin-top:12px">写真を添える（任意）</label>
+  <input type="file" id="lphoto" accept="image/*">
+  <div id="lphotoPreview" style="margin-top:8px">${A.pendingPhoto?`<div class="row"><img src="${A.pendingPhoto}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:8px"><span class="sub grow">この写真を記録します</span><button class="btn ghost sm" data-act="photoclear" style="width:auto;padding:8px 12px">取り消す</button></div>`:""}</div>
+  <button class="btn primary sm" data-act="log">保存する</button>
+  <p class="sub">保存後、少し時間をおいてから他のプレイヤーにも表示されます。</p>
+  <hr>
+  ${st.logs.length===0?`<p class="sub center">まだ記録がありません。最初の1件を書いてみてください。</p>`:""}
+  ${st.logs.slice().reverse().map(l=>logItemHtml(l)).join("")}
+  ${dock()}`);
+}
+
+function viewVote(){
+  const st=A.st;
+  if(st.phase==="playing"){
+    return h(`${switcher()}${topbar("最終投票","home")}
+    <div class="card flat center" style="padding:30px 6px">
+      <p>投票はまだ始まっていません。</p>
+      <p class="sub">旅行が終わったら、誰か1人が投票を開始してください。全員の画面が投票に切り替わります。</p></div>
+    <button class="btn danger" data-act="openvote">最終投票を始める</button>${dock()}`);
+  }
+  if(st.myVote){
+    return h(`${switcher()}${topbar("最終投票","home")}
+    <div class="card flat center" style="padding:24px 6px">
+      <p>投票しました。</p>
+      <p class="sub">${st.votedCount} / ${st.players.length} 人が投票済み</p></div>
+    ${st.players.map(p=>`<div class="row" style="padding:8px 2px"><span class="grow">${esc(p.name)}</span>
+      <span class="pill">${p.voted?"投票済み":"未投票"}</span></div>`).join("")}
+    <button class="btn danger" data-act="reveal" ${st.votedCount<st.players.length?"":""}>答え合わせを開く</button>
+    <p class="sub center">全員が投票してから開いてください。</p>${dock()}`);
+  }
+  const sel=A.sel;
+  return h(`${switcher()}${topbar("最終投票","home")}
+  <p class="sub">人狼だと思う2人を選んでください。</p>
+  ${st.players.filter(p=>p.id!==st.me.id).map(p=>`<button class="pick" data-pick2="${p.id}" aria-pressed="${sel.includes(p.id)}" ${!sel.includes(p.id)&&sel.length>=2?"disabled":""}>
+      <span class="mark"></span><span class="grow">${esc(p.name)}</span></button>`).join("")}
+  <div class="dock"><div class="inner"><button class="btn primary" data-act="vote" ${sel.length===2?"":"disabled"}>この2人に投票する</button></div></div>`);
+}
+
+function viewResult(){
+  const st=A.st, r=st.reveal;
+  if(!r) return viewVote();
+  const nameOf=id=>(st.players.find(p=>p.id===id)||{}).name||"？";
+  const wolves=st.players.filter(p=>p.role==="wolf");
+  const tally={}; st.players.forEach(p=>tally[p.id]=0);
+  Object.values(r.votes).forEach(v=>v.forEach(id=>{ if(tally[id]!==undefined) tally[id]++; }));
+  const correct=Object.entries(r.votes).filter(([,v])=>v.every(id=>wolves.some(w=>w.id===id))).length;
+
+  h(`${switcher()}${topbar("答え合わせ","home")}
+  <h1 style="margin-top:8px">人狼は、この2人</h1>
+  <div class="slip"><div class="stamp"><span>${esc(st.name)}</span><span>${new Date(st.createdAt).toLocaleDateString("ja-JP")}</span></div>
+    <div class="body" style="font-family:'Zen Antique',serif;font-size:24px">${wolves.map(w=>esc(w.name)).join("　と　")}</div>
+    <div style="font-size:13.5px;color:#6B6152;margin-top:10px">2人とも当てられた人：${correct} / ${Object.keys(r.votes).length}人</div></div>
+
+  <h2>全員の役職と得票</h2>
+  ${st.players.map(p=>`<div class="row" style="padding:9px 2px;border-top:1px solid #31434F">
+    <span class="grow">${esc(p.name)}</span>
+    <span class="sub mono">${tally[p.id]}票</span>
+    <span class="pill ${p.role==="wolf"?"wolf":""}">${roleLabel(p.role)}</span></div>`).join("")}
+
+  <h2>指示の全記録</h2>
+  ${wolves.map(w=>{
+    const os=r.orders.filter(o=>o.fromId===w.id);
+    return `<div class="card"><div class="row" style="margin-bottom:6px">
+      <span class="grow" style="font-family:'Zen Antique',serif;font-size:18px">🐺 ${esc(w.name)} の指示</span>
+      <span class="sub">${os.length}件</span></div>
+      ${os.length===0?`<p class="sub">一度も指示を送りませんでした。</p>`:""}
+      ${os.map(o=>`<div class="tl"><div class="t mono">${hhmm(o.deliverAt)}</div><div class="c">
+        <div class="to">→ ${esc(nameOf(o.toId))}（送信 ${hhmm(o.sentAt)} ・ ${Math.round((o.deliverAt-o.sentAt)/1000)}秒後に着弾）</div>
+        <div class="m">${esc(o.text)}</div></div></div>`).join("")}</div>`;
+  }).join("")}
+
+  <p class="sub center">このほかに、全員へ自動で配られた通知が${r.ambientCount}件ありました。<br>指示と見分けはつきません。</p>
+  <div style="height:40px"></div>${dock()}`);
+}
+
+/* ===================== ルーティング ===================== */
+function render(){
+  if(A.view==="home") return viewHome();
+  if(A.view==="create") return viewCreate();
+  if(A.view==="join") return viewJoin();
+  if(A.view==="pick") return viewPick();
+  if(A.st && !A.st.me){ A.view="pick"; return viewPick(); }
+  if(!A.st) return h(`<div class="center sub" style="padding:80px 0">読み込み中…</div>`);
+  if(A.st.phase!=="result" && A.st.me && !A.st.me.seenRole) return viewRole();
+  if(A.view==="role") return viewRole();
+  if(A.view==="inbox") return viewInbox();
+  if(A.view==="order") return viewOrder();
+  if(A.view==="log") return viewLog();
+  if(A.view==="vote") return viewVote();
+  if(A.view==="result") return viewResult();
+  return viewPlayerHome();
+}
+function nav(v){
+  if(v==="home"){ A.view = (A.st && A.st.me) ? "home2" : "home"; }
+  else A.view=v;
+  A.sel = (v==="vote"&&A.st&&A.st.myVote)?A.st.myVote:[];
+  render();
+}
+
+function bind(){
+  document.querySelectorAll("[data-nav]").forEach(el=>el.onclick=()=>nav(el.getAttribute("data-nav")));
+  document.querySelectorAll("[data-claim]").forEach(el=>el.onclick=()=>doClaim(el.getAttribute("data-claim")));
+  document.querySelectorAll("[data-read]").forEach(el=>el.onclick=()=>act("read",{id:el.getAttribute("data-read")}));
+  document.querySelectorAll("[data-pick1]").forEach(el=>el.onclick=()=>{ A.sel=[el.getAttribute("data-pick1")]; const t=document.getElementById("otext"); const keep=t?t.value:""; render(); const t2=document.getElementById("otext"); if(t2) t2.value=keep; });
+  document.querySelectorAll("[data-pick2]").forEach(el=>el.onclick=()=>{ const id=el.getAttribute("data-pick2");
+    A.sel = A.sel.includes(id) ? A.sel.filter(x=>x!==id) : (A.sel.length<2?[...A.sel,id]:A.sel); render(); });
+  document.querySelectorAll("[data-logkind]").forEach(el=>el.onclick=()=>{
+    const t=document.getElementById("ltext"); const keep=t?t.value:"";
+    A.logKind=el.getAttribute("data-logkind"); if(A.logKind!=="mood") A.logMood=null;
+    render();
+    const t2=document.getElementById("ltext"); if(t2) t2.value=keep;
+  });
+  document.querySelectorAll("[data-mood]").forEach(el=>el.onclick=()=>{
+    const t=document.getElementById("ltext"); const keep=t?t.value:"";
+    A.logMood=parseInt(el.getAttribute("data-mood"),10);
+    render();
+    const t2=document.getElementById("ltext"); if(t2) t2.value=keep;
+  });
+  const lphoto=document.getElementById("lphoto");
+  if(lphoto) lphoto.onchange=async()=>{
+    const f=lphoto.files[0]; if(!f) return;
+    const prev=document.getElementById("lphotoPreview");
+    if(prev) prev.innerHTML=`<span class="sub">写真を読み込んでいます…</span>`;
+    try{
+      A.pendingPhoto = await resizeImage(f, 1000);
+      const prev2=document.getElementById("lphotoPreview");
+      if(prev2) prev2.innerHTML=`<div class="row"><img src="${A.pendingPhoto}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:8px"><span class="sub grow">この写真を記録します</span><button class="btn ghost sm" data-act="photoclear" style="width:auto;padding:8px 12px">取り消す</button></div>`;
+      bind();
+    }catch(e){ toast("写真の読み込みに失敗しました"); }
+  };
+  const sw=document.getElementById("swsel");
+  if(sw) sw.onchange=async()=>{ A.pid=sw.value; A.view="home2"; saveSession(); await refresh(); render(); };
+  document.querySelectorAll("[data-act]").forEach(el=>el.onclick=()=>doAct(el.getAttribute("data-act")));
+}
+
+async function doAct(a){
+  if(a.startsWith("go:")) return nav(a.slice(3));
+  if(a==="resume"){ const s=LS.get("sjw:session",null); if(s){ A.code=s.code; A.pid=s.pid; await refresh(); if(!A.st||!A.st.me){ A.code=null;A.pid=null;A.view="home"; toast("前回のゲームが見つかりません"); } else A.view="home2"; render(); } return; }
+  if(a==="create"){
+    const name=document.getElementById("gname").value.trim();
+    const names=[...document.querySelectorAll(".pname")].map(i=>i.value.trim());
+    if(names.some(n=>!n)) return toast("7人分の名前を入れてください");
+    LS.set("sjw:names",names); LS.set("sjw:gname",name);
+    const {code}=await B.create(name,names);
+    A.code=code; A.st=null;
+    if(B.mode==="local"){ A.localPlayers=names.map((n,i)=>({id:"p"+(i+1),name:n,claimed:false})); }
+    else { A.st=await B.state(code,"?"); A.localPlayers=A.st?A.st.players:[]; }
+    A.view="pick"; render(); return;
+  }
+  if(a==="join"){
+    const code=document.getElementById("jcode").value.trim();
+    if(!/^\d{6}$/.test(code)) return toast("6桁の数字を入れてください");
+    if(!(await B.exists(code))) return toast("そのゲームが見つかりません");
+    A.code=code; const st=await B.state(code,"?"); A.localPlayers=st?st.players:[];
+    A.view="pick"; render(); return;
+  }
+  if(a==="roleshow"){ A.openSlip="role"; return render(); }
+  if(a==="rolehide"){ A.openSlip=null; return render(); }
+  if(a==="roleok"){ A.openSlip=null; A.view="home2"; return act("seenRole"); }
+  if(a==="send"){
+    const t=document.getElementById("otext").value.trim();
+    if(!A.sel[0]) return toast("送る相手を選んでください");
+    if(!t) return toast("指示の内容を入れてください");
+    await act("order",{toId:A.sel[0],text:t});
+    A.sel=[]; A.view="home2"; render(); toast("指示を送信しました"); return;
+  }
+  if(a==="enablepush"){ return enablePush(); }
+  if(a==="missionclear"){
+    if(confirm("このミッションをクリアしましたか？")){ await act("missionComplete"); toast("MISSION CLEAR！"); }
+    return;
+  }
+  if(a==="photoclear"){
+    A.pendingPhoto=null;
+    const el=document.getElementById("lphoto"); if(el) el.value="";
+    const prev=document.getElementById("lphotoPreview"); if(prev) prev.innerHTML="";
+    return;
+  }
+  if(a==="log"){
+    const kind=A.logKind||"free";
+    const t=document.getElementById("ltext").value.trim();
+    const mood=A.logMood;
+    if(kind==="mood" && !mood) return toast("気分を選んでください");
+    if(!t && !A.pendingPhoto && !(kind==="mood"&&mood)) return toast("内容か写真を入れてください");
+    await act("log",{text:t, photo:A.pendingPhoto||null, kind, mood});
+    A.pendingPhoto=null; A.logKind="free"; A.logMood=null; render(); toast("保存しました"); return;
+  }
+  if(a==="openvote"){ if(confirm("全員の画面を最終投票に切り替えます。よろしいですか？")) await act("openVote"); return; }
+  if(a==="vote"){ if(A.sel.length!==2) return; await act("vote",{picks:A.sel}); A.sel=[]; toast("投票しました"); return; }
+  if(a==="reveal"){ if(confirm("全員の役職と、すべての指示を公開します。よろしいですか？")){ await act("reveal"); A.view="result"; render(); } return; }
+}
+
+async function doClaim(pid){
+  const r=await B.claim(A.code,pid);
+  if(!r) return toast("参加できませんでした");
+  A.pid=pid; saveSession(); await refresh(); A.view="home2"; A.openSlip=null; render();
+}
+
+/* ===================== 起動 ===================== */
+(async function boot(){
+  try{
+    const r=await fetch("/api/ping",{cache:"no-store"});
+    if(r.ok && (await r.json()).ok) B=ServerBackend;
+  }catch(e){}
+  const p=new URLSearchParams(location.search);
+  if(p.get("g")){ A.code=p.get("g"); const st=await B.state(A.code,"?"); if(st){ A.localPlayers=st.players; A.view="pick"; } }
+  render();
+  setInterval(async()=>{
+    if(!A.code||!A.pid) return;
+    const before = A.st ? A.st.inbox.filter(i=>!i.read).length : 0;
+    const hadMission = A.st ? !!A.st.secretMission : false;
+    await refresh();
+    const after = unread();
+    const hasMission = A.st ? !!A.st.secretMission : false;
+    if(after>before && A.view!=="inbox"){ if(navigator.vibrate) navigator.vibrate(120); }
+    if(hasMission && !hadMission){ if(navigator.vibrate) navigator.vibrate([90,60,90,60,90]); toast("🎯 シークレットミッションが届きました"); }
+    const typing = document.activeElement && ["INPUT","TEXTAREA"].includes(document.activeElement.tagName);
+    if(!typing && ["home2","inbox","log","vote","result"].includes(A.view)) render();
+    document.title = (after>0?`(${after}) `:"")+"指示人狼";
+  },POLL_MS);
+})();
+</script>
+</body>
+</html>

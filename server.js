@@ -38,7 +38,8 @@ const LOG_PROMPTS = [
   { id: "photo_request",kind: "photo",       text: "誰か1人に写真を撮ってもらい、旅行ログに記録せよ" },
   { id: "mood",         kind: "mood",        text: "今の気分を5段階で評価して、旅行ログに記録せよ" },
   { id: "poem",         kind: "poem",        text: "ポエムを書いて、旅行ログに記録せよ" },
-  { id: "wolf_theory",  kind: "wolf_theory", text: "今の人狼の推理を書いて、旅行ログに記録せよ" }
+  { id: "wolf_theory",  kind: "wolf_theory", text: "今の人狼の推理を書いて、旅行ログに記録せよ" },
+  { id: "praise",       kind: "praise",      text: "誰か1人をベタ褒めせよ" }
 ];
 const AMBIENT_INTERVAL = () => rnd(20, 40) * 60 * 1000;   // 20〜40分おき
 const MAX_LOG_DELAY_MS = 3 * 60 * 1000;                    // 旅行ログの反映遅延: 最大3分
@@ -46,9 +47,9 @@ const MAX_LOG_DELAY_MS = 3 * 60 * 1000;                    // 旅行ログの反
 /* 秘密ミッション。旅行全体で3つだけ、別々のプレイヤーにランダムで届く。
    ここに追加すれば選択肢を増やせる(実際に使うのは毎回3つだけ)。 */
 const SECRET_MISSIONS = [
-  "みんなへの感謝をラップでまとめて披露しろ（AIを使って作成してもOK）",
-  "一発ギャグを10回成功させろ",
-  "誰かに「お前今日どうした？」と言わせろ"
+  "誰かに「お前今日どうした？」と言わせろ",
+  "知らない人と2ショットを撮れ",
+  "自分で人狼だと疑われるような言動を取り、2人以上に「怪しい」と言わせろ"
 ];
 function assignSecretMissions(g) {
   const shuffledPlayers = g.players.map(p => p.id);
@@ -78,6 +79,8 @@ function newGame(name, names) {
   const idx = [...Array(PLAYER_COUNT).keys()];
   for (let i = idx.length - 1; i > 0; i--) { const j = rnd(0, i);[idx[i], idx[j]] = [idx[j], idx[i]]; }
   idx.slice(0, WOLF_COUNT).forEach(i => roles[i] = "wolf");
+  const hypeIdx = idx.slice(WOLF_COUNT)[rnd(0, PLAYER_COUNT - WOLF_COUNT - 1)];  // 人狼以外から1人、市民(盛り上げ役)に
+  roles[hypeIdx] = "citizen_hype";
   const t = Date.now();
   let code; do { code = String(rnd(100000, 999999)); } while (games[code]);
   const g = {
@@ -140,7 +143,9 @@ function view(g, myId) {
     inbox,
     secretMission,
     sentCount: me && me.role === "wolf" ? g.orders.filter(o => o.fromId === myId).length : 0,
-    logs: g.logs.filter(l => l.playerId === myId || l.deliverAt <= t).slice(-80),
+    logs: g.logs.filter(l => l.playerId === myId || l.deliverAt <= t).slice(-80)
+      .map(l => ({ id: l.id, kind: l.kind, text: l.text, hasPhoto: !!l.photo, mood: l.mood, at: l.at,
+        mine: l.playerId === myId, playerId: l.playerId === myId ? l.playerId : null })),
     myVote: g.votes[myId] || null,
     votedCount: Object.keys(g.votes).length,
     reveal: reveal ? {
@@ -170,7 +175,7 @@ function applyAction(g, pid, action, payload) {
   else if (action === "log") {
     const txt = String(payload.text || "").trim().slice(0, 600);
     const photo = (typeof payload.photo === "string" && payload.photo.startsWith("data:image/")) ? payload.photo : null;
-    const allowedKinds = ["free", "photo", "tanka", "poem", "mood", "wolf_theory"];
+    const allowedKinds = ["free", "photo", "tanka", "poem", "mood", "wolf_theory", "praise"];
     const kind = allowedKinds.includes(payload.kind) ? payload.kind : "free";
     let mood = null;
     if (kind === "mood") { const m = parseInt(payload.mood, 10); if (m >= 1 && m <= 5) mood = m; }
@@ -257,6 +262,20 @@ http.createServer(async (req, res) => {
     const out = view(g, u.searchParams.get("pid"));
     save();
     return json(res, 200, out);
+  }
+
+  if (p === "/api/photo") {
+    const g = games[u.searchParams.get("code")];
+    const pid = u.searchParams.get("pid"), id = u.searchParams.get("id");
+    if (!g) { res.writeHead(404); return res.end(); }
+    const l = g.logs.find(x => x.id === id);
+    const visible = l && (l.playerId === pid || l.deliverAt <= Date.now());
+    if (!visible || !l.photo) { res.writeHead(404); return res.end(); }
+    const m = /^data:(image\/\w+);base64,(.+)$/.exec(l.photo);
+    if (!m) { res.writeHead(404); return res.end(); }
+    const buf = Buffer.from(m[2], "base64");
+    res.writeHead(200, { "Content-Type": m[1], "Cache-Control": "private, max-age=86400", "Content-Length": buf.length });
+    return res.end(buf);
   }
 
   if (p === "/api/create" && req.method === "POST") {
