@@ -39,7 +39,7 @@ const LOG_PROMPTS = [
   { id: "mood",         kind: "mood",        text: "今の気分を5段階で評価して、旅行ログに記録せよ" },
   { id: "poem",         kind: "poem",        text: "ポエムを書いて、旅行ログに記録せよ" },
   { id: "wolf_theory",  kind: "wolf_theory", text: "今の人狼の推理を書いて、旅行ログに記録せよ" },
-  { id: "praise",       kind: "praise",      text: "誰か1人をベタ褒めせよ" }
+  { id: "praise",       kind: "praise",      text: "誰か1人をベタ褒めして、旅行ログに記録せよ" }
 ];
 const AMBIENT_INTERVAL = () => rnd(20, 40) * 60 * 1000;   // 20〜40分おき
 const MAX_LOG_DELAY_MS = 3 * 60 * 1000;                    // 旅行ログの反映遅延: 最大3分
@@ -79,8 +79,8 @@ function newGame(name, names) {
   const idx = [...Array(PLAYER_COUNT).keys()];
   for (let i = idx.length - 1; i > 0; i--) { const j = rnd(0, i);[idx[i], idx[j]] = [idx[j], idx[i]]; }
   idx.slice(0, WOLF_COUNT).forEach(i => roles[i] = "wolf");
-  const hypeIdx = idx.slice(WOLF_COUNT)[rnd(0, PLAYER_COUNT - WOLF_COUNT - 1)];  // 人狼以外から1人、市民(盛り上げ役)に
-  roles[hypeIdx] = "citizen_hype";
+  const hypeIdx = idx.slice(WOLF_COUNT)[rnd(0, PLAYER_COUNT - WOLF_COUNT - 1)];  // 人狼以外から1人、奇行人に
+  roles[hypeIdx] = "kikoujin";
   const t = Date.now();
   let code; do { code = String(rnd(100000, 999999)); } while (games[code]);
   const g = {
@@ -198,7 +198,7 @@ function applyAction(g, pid, action, payload) {
     if (others.length) {
       const target = others[rnd(0, others.length - 1)];
       sm.rewardPlayerId = target.id;
-      sm.rewardRole = target.role;
+      sm.rewardRole = target.role === "kikoujin" ? "citizen" : target.role;   // 奇行人は最終投票まで市民として開示
     }
   }
   else if (action === "reveal") { g.phase = "result"; g.revealedAt = Date.now(); }
