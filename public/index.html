@@ -154,15 +154,16 @@ const LOG_PROMPTS = [
   { id:"photo_request",kind:"photo",       text:"誰か1人に写真を撮ってもらい、旅行ログに記録せよ" },
   { id:"mood",         kind:"mood",        text:"今の気分を5段階で評価して、旅行ログに記録せよ" },
   { id:"poem",         kind:"poem",        text:"ポエムを書いて、旅行ログに記録せよ" },
-  { id:"wolf_theory",  kind:"wolf_theory", text:"今の人狼の推理を書いて、旅行ログに記録せよ" }
+  { id:"wolf_theory",  kind:"wolf_theory", text:"今の人狼の推理を書いて、旅行ログに記録せよ" },
+  { id:"praise",       kind:"praise",      text:"誰か1人をベタ褒めして、旅行ログに記録せよ" }
 ];
 const AMBIENT_INTERVAL = ()=> rnd(20,40)*60*1000;   // 20〜40分おき
 
 /* 秘密ミッション。旅行全体で3つだけ、別々のプレイヤーにランダムで届く。 */
 const SECRET_MISSIONS = [
-  "みんなへの感謝をラップでまとめて披露しろ（AIを使って作成してもOK）",
-  "一発ギャグを10回成功させろ",
-  "誰かに「お前今日どうした？」と言わせろ"
+  "誰かに「お前今日どうした？」と言わせろ",
+  "知らない人と2ショットを撮れ",
+  "自分で人狼だと疑われるような言動を取り、2人以上に「怪しい」と言わせろ"
 ];
 function assignSecretMissions(g){
   const shuffledPlayers = g.players.map(p=>p.id);
@@ -181,6 +182,7 @@ const uid = ()=>Math.random().toString(36).slice(2,10);
 const nowMs = ()=>Date.now();
 const hhmm = t=>{const d=new Date(t);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");};
 const esc = s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const roleLabel = role => role==="wolf" ? "人狼" : role==="kikoujin" ? "奇行人" : "市民";
 
 /* ===================== ゲームロジック（サーバーと共有の考え方） ===================== */
 const Core = {
@@ -189,6 +191,8 @@ const Core = {
     const idx = [...Array(PLAYER_COUNT).keys()];
     for(let i=idx.length-1;i>0;i--){const j=rnd(0,i);[idx[i],idx[j]]=[idx[j],idx[i]];}
     idx.slice(0,WOLF_COUNT).forEach(i=>roles[i]="wolf");
+    const hypeIdx = idx.slice(WOLF_COUNT)[rnd(0, PLAYER_COUNT-WOLF_COUNT-1)];
+    roles[hypeIdx] = "kikoujin";
     const t = nowMs();
     const g = {
       code: String(rnd(100000,999999)),
@@ -261,7 +265,9 @@ const Core = {
       inbox,
       secretMission,
       sentCount: me && me.role==="wolf" ? g.orders.filter(o=>o.fromId===myId).length : 0,
-      logs: g.logs.filter(l=>l.playerId===myId || l.deliverAt<=t).slice(-80),
+      logs: g.logs.filter(l=>l.playerId===myId || l.deliverAt<=t).slice(-80)
+        .map(l=>({id:l.id, kind:l.kind, text:l.text, photo:l.photo, hasPhoto:!!l.photo, mood:l.mood, at:l.at,
+          mine: l.playerId===myId, playerId: l.playerId===myId ? l.playerId : null})),
       myVote: g.votes[myId] || null,
       votedCount: Object.keys(g.votes).length,
       reveal: reveal ? {
@@ -321,7 +327,7 @@ function applyAction(g,pid,action,payload){
   else if(action==="log"){
     const txt=String(payload.text||"").trim().slice(0,600);
     const photo=(typeof payload.photo==="string" && payload.photo.startsWith("data:image/")) ? payload.photo : null;
-    const allowedKinds=["free","photo","tanka","poem","mood","wolf_theory"];
+    const allowedKinds=["free","photo","tanka","poem","mood","wolf_theory","praise"];
     const kind = allowedKinds.includes(payload.kind) ? payload.kind : "free";
     let mood=null;
     if(kind==="mood"){ const m=parseInt(payload.mood,10); if(m>=1&&m<=5) mood=m; }
@@ -343,7 +349,7 @@ function applyAction(g,pid,action,payload){
     const others=g.players.filter(p=>p.id!==pid);
     if(others.length){
       const target=others[rnd(0,others.length-1)];
-      sm.rewardPlayerId=target.id; sm.rewardRole=target.role;
+      sm.rewardPlayerId=target.id; sm.rewardRole = target.role==="kikoujin" ? "citizen" : target.role;
     }
   }
   else if(action==="reveal"){ g.phase="result"; g.revealedAt=nowMs(); }
@@ -360,11 +366,13 @@ const KIND_META = {
   tanka:       { label:"短歌",   placeholder:"五・七・五・七・七で、今の気持ちを詠んでみてください" },
   poem:        { label:"ポエム", placeholder:"自由に一篇、書いてみてください" },
   mood:        { label:"気分",   placeholder:"ひとことあれば（任意）" },
-  wolf_theory: { label:"推理",   placeholder:"今、誰が怪しい？ 理由も自由に書いてみてください" }
+  wolf_theory: { label:"推理",   placeholder:"今、誰が怪しい？ 理由も自由に書いてみてください" },
+  praise:      { label:"べた褒め", placeholder:"誰を、どんなふうに褒めたか自由に書いてください" }
 };
 const KIND_CHIPS = [
   {k:"free", label:"📝 その他"}, {k:"photo", label:"📷 写真"}, {k:"tanka", label:"🌸 短歌"},
-  {k:"poem", label:"✒️ ポエム"}, {k:"mood", label:"🙂 気分"}, {k:"wolf_theory", label:"🔍 推理"}
+  {k:"poem", label:"✒️ ポエム"}, {k:"mood", label:"🙂 気分"}, {k:"wolf_theory", label:"🔍 推理"},
+  {k:"praise", label:"🎉 べた褒め"}
 ];
 
 /* 選んだ写真を、送信に耐えるサイズまで縮小・圧縮してdataURLにする */
@@ -485,10 +493,12 @@ function viewRole(){
   <p class="sub">まわりに画面を見られていないことを確かめてから開いてください。</p>
   ${open ? `<div class="slip"><div class="stamp"><span>${esc(A.st.name)}</span><span>${esc(me.name)}</span></div>
       <div class="body" style="font-family:'Zen Antique',serif;font-size:26px;line-height:1.5">
-      ${me.role==="wolf"?"あなたは人狼です":"あなたは市民です"}</div>
+      ${me.role==="wolf" ? "あなたは人狼です" : me.role==="kikoujin" ? "あなたは「奇行人」です" : "あなたは市民です"}</div>
       <div style="font-size:13.5px;color:#6B6152;margin-top:10px">
       ${me.role==="wolf"
         ? "もう1人の人狼が誰かは分かりません。旅が終わるまで正体を隠し通せば勝ちです。"
+        : me.role==="kikoujin"
+        ? "あなたに特別な勝利条件はありません。とにかく旅行中、できる限り奇行（まわりを驚かせるような変な言動）を繰り返してください。あなたの正体は、最終投票が終わるまで誰にも明かされません。"
         : "旅の終わりの投票で、人狼2人を当てるのが目的です。"}</div></div>
       <button class="btn primary" data-act="roleok">確認した</button>
       <button class="btn ghost sm" data-act="rolehide">画面を隠す</button>`
@@ -511,7 +521,7 @@ function missionCardHtml(sm){
     <div class="txt" style="opacity:.75;text-decoration:line-through">${esc(sm.text)}</div>
     ${r ? `<div class="reward">
         <div class="sub">あなたは ${esc(r.name)} さんの役職を知りました</div>
-        <div style="font-family:'Zen Antique',serif;font-size:22px;margin-top:6px">${esc(r.name)}：${r.role==="wolf"?"人狼":"市民"}</div>
+        <div style="font-family:'Zen Antique',serif;font-size:22px;margin-top:6px">${esc(r.name)}：${roleLabel(r.role)}</div>
         <div class="sub" style="margin-top:6px">話すかどうかも、嘘をつくかどうかも自由です。</div>
       </div>` : ""}
   </div>`;
@@ -524,7 +534,7 @@ function viewPlayerHome(){
   <div class="topbar"><div class="title">${esc(st.name)}</div><div class="spacer"></div><div class="code mono">${st.code}</div></div>
   <div class="card row">
     <div class="grow"><div style="font-size:18px">${esc(me.name)}</div>
-      <div class="sub">${me.role==="wolf"?"人狼":"市民"}・${st.players.length}人で旅行中</div></div>
+      <div class="sub">${roleLabel(me.role)}・${st.players.length}人で旅行中</div></div>
     <span class="pill ${me.role==="wolf"?"wolf":""}">${me.role==="wolf"?"🐺":"🧭"}</span>
   </div>
 
@@ -584,22 +594,24 @@ function viewOrder(){
   <div class="dock"><div class="inner"><button class="btn primary" data-act="send" ${A.sel[0]?"":"disabled"}>この指示を送る</button></div></div>`);
 }
 
-function logItemHtml(l,nameOf){
+function logItemHtml(l){
   const meta = KIND_META[l.kind]||KIND_META.free;
   const isVerse = l.kind==="tanka" || l.kind==="poem";
+  const authorLabel = l.mine ? `${esc((A.st.me&&A.st.me.name)||"あなた")}（自分）` : "匿名";
+  const photoSrc = l.photo ? l.photo
+    : (l.hasPhoto ? `/api/photo?code=${encodeURIComponent(A.code)}&pid=${encodeURIComponent(A.pid)}&id=${encodeURIComponent(l.id)}` : null);
   return `<div class="logitem">
-      <div class="meta"><span class="mono">${hhmm(l.at)}</span> ・ ${esc(nameOf(l.playerId))}${meta.label?` ・ <span class="pill">${esc(meta.label)}</span>`:""}</div>
+      <div class="meta"><span class="mono">${hhmm(l.at)}</span> ・ ${authorLabel}${meta.label?` ・ <span class="pill">${esc(meta.label)}</span>`:""}</div>
       ${l.kind==="mood" && l.mood ? `<div style="font-size:22px;letter-spacing:.14em;margin-top:4px">${"●".repeat(l.mood)}${"○".repeat(5-l.mood)}<span class="sub" style="font-size:13px;margin-left:8px">${l.mood}/5</span></div>` : ""}
       ${l.text ? (isVerse
           ? `<div class="txt" style="font-family:'Zen Antique',serif;font-size:17.5px;line-height:1.9;margin-top:6px">${esc(l.text)}</div>`
           : `<div class="txt">${esc(l.text)}</div>`) : ""}
-      ${l.photo?`<img src="${l.photo}" alt="" style="max-width:100%;border-radius:10px;margin-top:8px;display:block">`:""}
+      ${photoSrc?`<img src="${photoSrc}" alt="" loading="lazy" style="max-width:100%;border-radius:10px;margin-top:8px;display:block">`:""}
       </div>`;
 }
 
 function viewLog(){
   const st=A.st;
-  const nameOf=id=>(st.players.find(p=>p.id===id)||{}).name||"？";
   const kind = A.logKind||"free";
   const meta = KIND_META[kind];
   h(`${switcher()}${topbar("旅行ログ","home")}
@@ -622,7 +634,7 @@ function viewLog(){
   <p class="sub">保存後、少し時間をおいてから他のプレイヤーにも表示されます。</p>
   <hr>
   ${st.logs.length===0?`<p class="sub center">まだ記録がありません。最初の1件を書いてみてください。</p>`:""}
-  ${st.logs.slice().reverse().map(l=>logItemHtml(l,nameOf)).join("")}
+  ${st.logs.slice().reverse().map(l=>logItemHtml(l)).join("")}
   ${dock()}`);
 }
 
@@ -672,7 +684,7 @@ function viewResult(){
   ${st.players.map(p=>`<div class="row" style="padding:9px 2px;border-top:1px solid #31434F">
     <span class="grow">${esc(p.name)}</span>
     <span class="sub mono">${tally[p.id]}票</span>
-    <span class="pill ${p.role==="wolf"?"wolf":""}">${p.role==="wolf"?"人狼":"市民"}</span></div>`).join("")}
+    <span class="pill ${p.role==="wolf"?"wolf":""}">${roleLabel(p.role)}</span></div>`).join("")}
 
   <h2>指示の全記録</h2>
   ${wolves.map(w=>{
